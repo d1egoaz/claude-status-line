@@ -1,0 +1,18 @@
+[package]
+name = "statusline"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+# Optimize for binary size over speed (s = size, z = even smaller)
+opt-level = "z"
+# Link-Time Optimization: inline across crate boundaries, slower build but smaller/faster binary
+lto = true
+# Remove debug symbols and other metadata from final binary
+strip = true
+# Skip stack unwinding on panic, just abort. Saves ~50KB since we don't need graceful panic handling
+panic = "abort"
