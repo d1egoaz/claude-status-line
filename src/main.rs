@@ -52,7 +52,11 @@ struct ContextWindow {
 }
 
 impl ContextWindow {
-    #[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    #[allow(
+        clippy::cast_precision_loss,
+        clippy::cast_possible_truncation,
+        clippy::cast_sign_loss
+    )]
     fn stats(&self) -> (u64, u64, f64) {
         let max = if self.context_window_size > 0 {
             self.context_window_size
