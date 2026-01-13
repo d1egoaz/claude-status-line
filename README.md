@@ -4,7 +4,18 @@ A fast Rust binary for rendering Claude Code's status line.
 
 ## Why?
 
-The default shell-based status line spawns multiple `jq` processes per render. This Rust version parses JSON once and runs in tens of microseconds.
+Life's too short for slow status lines.
+
+The bash version spawns 7 `jq` processes per render (121ms). This Rust version parses JSON once and gets out of your way (13ms). Same output, 9x faster, 100% less process spawning.
+
+### Benchmark (hyperfine, 100 runs)
+
+| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
+|:---|---:|---:|---:|---:|
+| Bash + jq (7 calls) | 121.1 ± 6.8 | 103.7 | 145.0 | 9.17 ± 1.46 |
+| Rust binary | 13.2 ± 2.0 | 9.4 | 19.7 | 1.00 |
+
+See `statusline.sh.example` for the original bash implementation.
 
 ## Build
 
