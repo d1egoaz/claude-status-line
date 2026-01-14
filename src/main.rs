@@ -1,11 +1,14 @@
 use serde::Deserialize;
-use std::io;
-use std::path::Path;
-use std::time::Instant;
+use std::{
+    io::{self, Read},
+    path::Path,
+    time::Instant,
+};
 
+/// Default context window size for Claude models (Opus 4.5, Sonnet 4, etc.)
 const DEFAULT_CONTEXT_WINDOW: u64 = 200_000;
 
-#[derive(Deserialize, Default)]
+#[derive(Debug, Deserialize, Default)]
 struct Input {
     #[serde(default)]
     model: Model,
@@ -17,7 +20,7 @@ struct Input {
     context_window: ContextWindow,
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Debug, Deserialize, Default)]
 struct Model {
     #[serde(default)]
     id: String,
@@ -37,13 +40,19 @@ impl Model {
     }
 }
 
-#[derive(Deserialize, Default)]
+#[derive(Debug, Deserialize, Default)]
 struct Cost {
     #[serde(default)]
     total_cost_usd: f64,
 }
 
-#[derive(Deserialize, Default)]
+impl Cost {
+    fn rounded(&self) -> i64 {
+        self.total_cost_usd.round() as i64
+    }
+}
+
+#[derive(Debug, Deserialize, Default)]
 struct ContextWindow {
     #[serde(default)]
     context_window_size: u64,
@@ -52,11 +61,6 @@ struct ContextWindow {
 }
 
 impl ContextWindow {
-    #[allow(
-        clippy::cast_precision_loss,
-        clippy::cast_possible_truncation,
-        clippy::cast_sign_loss
-    )]
     fn stats(&self) -> (u64, u64, f64) {
         let max = if self.context_window_size > 0 {
             self.context_window_size
@@ -64,40 +68,105 @@ impl ContextWindow {
             DEFAULT_CONTEXT_WINDOW
         };
 
-        // Safe: token counts fit in f64, result is always positive, truncation is intentional
-        let used_k = (max as f64 * self.used_percentage / 100.0 / 1000.0) as u64;
-        let max_k = max / 1000;
+        let pct = self.used_percentage;
 
-        (used_k, max_k, self.used_percentage)
+        // Round to nearest k
+        let used_tokens = (max as f64 * (pct / 100.0)).round();
+        let used_k = (used_tokens / 1000.0).round() as u64;
+        let max_k = (max as f64 / 1000.0).round() as u64;
+
+        (used_k, max_k, pct)
+    }
+}
+
+fn dir_basename(cwd: &str) -> &str {
+    Path::new(cwd)
+        .file_name()
+        .and_then(|s| s.to_str())
+        .filter(|s| !s.is_empty())
+        .unwrap_or("?")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn model_name_prefers_display_name() {
+        let m = Model {
+            display_name: "Opus 4.5".into(),
+            id: "claude-opus".into(),
+        };
+        assert_eq!(m.name(), "Opus 4.5");
+    }
+
+    #[test]
+    fn model_name_falls_back_to_id() {
+        let m = Model {
+            display_name: String::new(),
+            id: "claude-opus".into(),
+        };
+        assert_eq!(m.name(), "claude-opus");
+    }
+
+    #[test]
+    fn model_name_fallback_to_question_mark() {
+        let m = Model::default();
+        assert_eq!(m.name(), "?");
+    }
+
+    #[test]
+    fn context_stats_uses_provided_size() {
+        let ctx = ContextWindow {
+            context_window_size: 100_000,
+            used_percentage: 50.0,
+        };
+        let (used_k, max_k, pct) = ctx.stats();
+        assert_eq!(max_k, 100);
+        assert_eq!(used_k, 50);
+        assert!((pct - 50.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn context_stats_uses_default_when_zero() {
+        let ctx = ContextWindow {
+            context_window_size: 0,
+            used_percentage: 10.0,
+        };
+        let (_, max_k, _) = ctx.stats();
+        assert_eq!(max_k, 200); // DEFAULT_CONTEXT_WINDOW / 1000
+    }
+
+    #[test]
+    fn dir_basename_extracts_last_component() {
+        assert_eq!(dir_basename("/foo/bar/project"), "project");
+        assert_eq!(dir_basename("/single"), "single");
+        assert_eq!(dir_basename("relative/path"), "path");
+    }
+
+    #[test]
+    fn dir_basename_handles_empty() {
+        assert_eq!(dir_basename(""), "?");
     }
 }
 
 fn main() {
     let start = Instant::now();
 
-    // 1. Direct parsing from stdin is more memory efficient
-    let input: Input = serde_json::from_reader(io::stdin()).unwrap_or_default();
+    // Read JSON from stdin
+    let mut buf = String::new();
+    io::stdin().read_to_string(&mut buf).ok();
 
-    // 2. Use Path API for robust directory handling
-    let dir_name = Path::new(&input.cwd)
-        .file_name()
-        .and_then(|os_str| os_str.to_str())
-        .unwrap_or("?");
+    let input: Input = serde_json::from_str(&buf).unwrap_or_default();
 
-    // 3. Destructure stats for readability
     let (used_k, max_k, pct) = input.context_window.stats();
-
-    // 4. Round cost to nearest dollar (safe: costs are small positive values)
-    #[allow(clippy::cast_possible_truncation)]
-    let cost = input.cost.total_cost_usd.round() as i64;
-
     let elapsed_us = start.elapsed().as_micros();
 
     println!(
         "[{}] ${} - 📂[{}] - {}k/{}k ({:.0}%) - {}us",
         input.model.name(),
-        cost,
-        dir_name,
+        input.cost.rounded(),
+        dir_basename(&input.cwd),
         used_k,
         max_k,
         pct,

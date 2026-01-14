@@ -41,6 +41,11 @@ check:
 fmt:
     cargo fmt
 
-# Lint code
+# Lint code (pedantic configured in Cargo.toml)
 lint:
-    cargo clippy -- -W clippy::pedantic
+    cargo clippy -- -D warnings
+
+# Benchmark binary (requires hyperfine)
+bench:
+    @echo '{"model":{"display_name":"Opus 4.5"},"cost":{"total_cost_usd":1.67},"cwd":"/foo/bar/project","context_window":{"context_window_size":200000,"used_percentage":16}}' > /tmp/bench.json
+    hyperfine --warmup 5 --runs 100 'cat /tmp/bench.json | ./target/release/statusline'
