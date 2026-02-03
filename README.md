@@ -1,6 +1,8 @@
 # claude-status-line
 
-A fast Rust binary for rendering Claude Code's status line.
+A fast Rust binary for rendering Claude Code's status line with Tokyo Night colors.
+
+![Screenshot](screenshot.png)
 
 ## Why?
 
@@ -48,17 +50,18 @@ Configure in `~/.claude/settings.json`:
 ## Example Output
 
 ```
-[Opus 4.5] $2 - 📂[my-project] - 25k/200k (13%) - 42us
+[Opus 4.5] $1 - [.claude] - 46k/200k (23%) - 27us
 ```
 
-| Field | Description |
-|-------|-------------|
-| `[Opus 4.5]` | Current model name |
-| `$2` | Session cost (rounded to nearest dollar) |
-| `📂[my-project]` | Current working directory basename |
-| `25k/200k` | Context tokens used / total available |
-| `(13%)` | Context usage percentage |
-| `15us` | Status line render time (microseconds) |
+| Field | Color | Description |
+|-------|-------|-------------|
+| `[Opus 4.5]` | Blue | Current model name |
+| `$1` | Green/Yellow/Orange | Session cost (green $0-5, yellow $6-20, orange $21+) |
+| `[.claude]` | Purple | Current working directory basename |
+| `46k/200k (23%)` | Cyan | Context tokens used / total available |
+| `27us` | Gray | Status line render time (microseconds) |
+
+Colors use the [Tokyo Night](https://github.com/enkia/tokyo-night-vscode-theme) palette.
 
 ## Development
 
