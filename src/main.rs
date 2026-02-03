@@ -1,9 +1,21 @@
+use colored::Colorize;
 use serde::Deserialize;
 use std::{
     io::{self, Read},
     path::Path,
     time::Instant,
 };
+
+/// Tokyo Night color palette (RGB values)
+mod tokyo {
+    pub const BLUE: (u8, u8, u8) = (122, 162, 247); // #7aa2f7 - model
+    pub const PURPLE: (u8, u8, u8) = (187, 154, 247); // #bb9af7 - folder
+    pub const CYAN: (u8, u8, u8) = (125, 207, 255); // #7dcfff - usage
+    pub const GREEN: (u8, u8, u8) = (158, 206, 106); // #9ece6a - price (low)
+    pub const YELLOW: (u8, u8, u8) = (224, 175, 104); // #e0af68 - price (medium)
+    pub const ORANGE: (u8, u8, u8) = (255, 158, 100); // #ff9e64 - price (high)
+    pub const COMMENT: (u8, u8, u8) = (86, 95, 137); // #565f89 - time (dimmed)
+}
 
 /// Default context window size for Claude models (Opus 4.5, Sonnet 4, etc.)
 const DEFAULT_CONTEXT_WINDOW: u64 = 200_000;
@@ -150,8 +162,20 @@ mod tests {
     }
 }
 
+/// Returns RGB color for price based on cost thresholds
+fn price_color(cost: i64) -> (u8, u8, u8) {
+    match cost {
+        0..=5 => tokyo::GREEN,   // cheap
+        6..=20 => tokyo::YELLOW, // moderate
+        _ => tokyo::ORANGE,      // expensive
+    }
+}
+
 fn main() {
     let start = Instant::now();
+
+    // Force colors on even when stdout is piped (Claude Code captures via pipe)
+    colored::control::set_override(true);
 
     // Read JSON from stdin
     let mut buf = String::new();
@@ -162,14 +186,19 @@ fn main() {
     let (used_k, max_k, pct) = input.context_window.stats();
     let elapsed_us = start.elapsed().as_micros();
 
+    let cost = input.cost.rounded();
+    let (pr, pg, pb) = price_color(cost);
+
     println!(
-        "[{}] ${} - 📂[{}] - {}k/{}k ({:.0}%) - {}us",
-        input.model.name(),
-        input.cost.rounded(),
-        dir_basename(&input.cwd),
-        used_k,
-        max_k,
-        pct,
-        elapsed_us
+        "[{}] {} - [{}] - {} - {}",
+        input
+            .model
+            .name()
+            .truecolor(tokyo::BLUE.0, tokyo::BLUE.1, tokyo::BLUE.2),
+        format!("${cost}").truecolor(pr, pg, pb),
+        dir_basename(&input.cwd).truecolor(tokyo::PURPLE.0, tokyo::PURPLE.1, tokyo::PURPLE.2),
+        format!("{used_k}k/{max_k}k ({pct:.0}%)")
+            .truecolor(tokyo::CYAN.0, tokyo::CYAN.1, tokyo::CYAN.2),
+        format!("{elapsed_us}us").truecolor(tokyo::COMMENT.0, tokyo::COMMENT.1, tokyo::COMMENT.2),
     );
 }
