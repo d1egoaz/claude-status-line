@@ -2,11 +2,7 @@
 
 A fast Rust binary for rendering Claude Code's status line with Tokyo Night colors.
 
-**v1** (single line):
-![Screenshot v1](screenshot.png)
-
-**v2** (git-aware + full path):
-![Screenshot v2](screenshot2.png)
+![Screenshot](screenshot.png)
 
 ## Why?
 
