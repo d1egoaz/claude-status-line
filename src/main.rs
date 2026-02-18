@@ -202,7 +202,10 @@ fn shorten_path(path: &str) -> String {
     std::env::var("HOME")
         .ok()
         .filter(|home| path.starts_with(home))
-        .map_or_else(|| path.to_string(), |home| format!("~{}", &path[home.len()..]))
+        .map_or_else(
+            || path.to_string(),
+            |home| format!("~{}", &path[home.len()..]),
+        )
 }
 
 /// Returns RGB color for price based on cost thresholds
@@ -243,8 +246,11 @@ fn main() {
             .truecolor(tokyo::BLUE.0, tokyo::BLUE.1, tokyo::BLUE.2),
         format!("${cost}").truecolor(pr, pg, pb),
         repo_display.truecolor(tokyo::PURPLE.0, tokyo::PURPLE.1, tokyo::PURPLE.2),
-        format!("{used_k}k/{max_k}k ({pct:.0}%)")
-            .truecolor(tokyo::CYAN.0, tokyo::CYAN.1, tokyo::CYAN.2),
+        format!("{used_k}k/{max_k}k ({pct:.0}%)").truecolor(
+            tokyo::CYAN.0,
+            tokyo::CYAN.1,
+            tokyo::CYAN.2
+        ),
         format!("{elapsed_us}us").truecolor(tokyo::COMMENT.0, tokyo::COMMENT.1, tokyo::COMMENT.2),
     );
 
