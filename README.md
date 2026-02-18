@@ -2,20 +2,32 @@
 
 A fast Rust binary for rendering Claude Code's status line with Tokyo Night colors.
 
-![Screenshot](screenshot.png)
+**v1** (single line):
+![Screenshot v1](screenshot.png)
+
+**v2** (git-aware + full path):
+![Screenshot v2](screenshot2.png)
 
 ## Why?
 
 Life's too short for slow status lines.
 
-The bash version spawns 7 `jq` processes per render (121ms). This Rust version parses JSON once and gets out of your way (13ms). Same output, 9x faster, 100% less process spawning.
+The bash version spawns 7 `jq` processes per render (121ms). This Rust version parses JSON once and gets out of your way. Same output, 9-17x faster, 100% less process spawning.
 
 ### Benchmark (hyperfine, 100 runs)
+
+**Apple M1 Max**:
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
 | Bash + jq (7 calls) | 121.1 ± 6.8 | 103.7 | 145.0 | 9.17 ± 1.46 |
 | Rust binary | 13.2 ± 2.0 | 9.4 | 19.7 | 1.00 |
+
+**Apple M4 Pro**:
+
+| Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
+|:---|---:|---:|---:|---:|
+| Rust binary | 7.1 ± 1.4 | 5.0 | 13.5 | 1.00 |
 
 See `statusline.sh.example` for the original bash implementation.
 
@@ -50,16 +62,18 @@ Configure in `~/.claude/settings.json`:
 ## Example Output
 
 ```
-[Opus 4.5] $1 - [.claude] - 46k/200k (23%) - 27us
+[Opus 4.5] $1 - [my-project] - 46k/200k (23%) - 27us
+~/code/oss/my-project
 ```
 
 | Field | Color | Description |
 |-------|-------|-------------|
 | `[Opus 4.5]` | Blue | Current model name |
 | `$1` | Green/Yellow/Orange | Session cost (green $0-5, yellow $6-20, orange $21+) |
-| `[.claude]` | Purple | Current working directory basename |
+| `[my-project]` | Purple | Git repository name (detects worktrees) |
 | `46k/200k (23%)` | Cyan | Context tokens used / total available |
 | `27us` | Gray | Status line render time (microseconds) |
+| `~/code/...` | Gray | Working directory path (~ for home) |
 
 Colors use the [Tokyo Night](https://github.com/enkia/tokyo-night-vscode-theme) palette.
 
