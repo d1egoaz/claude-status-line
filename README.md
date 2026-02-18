@@ -12,7 +12,21 @@ A fast Rust binary for rendering Claude Code's status line with Tokyo Night colo
 
 Life's too short for slow status lines.
 
-The bash version spawns 7 `jq` processes per render (121ms). This Rust version parses JSON once and gets out of your way. Same output, 9-17x faster, 100% less process spawning.
+The bash version spawns 7 `jq` processes per render (121ms). This Rust version parses JSON once and gets out of your way. Same output, 9-17x faster, **zero process spawning**.
+
+### Zero External Commands
+
+Most tools shell out to `git` for repo info. Each `git` call costs ~8ms in fork/exec overhead. We read git's internal files directly - in-process, no spawning:
+
+| Info | Traditional (~8ms each) | This Tool (~5us) |
+|------|-------------------------|------------------|
+| Repo name | `git rev-parse --show-toplevel` | Read `.git` file |
+| Branch | `git rev-parse --abbrev-ref HEAD` | Read `.git/HEAD` |
+| Worktree | `git rev-parse --git-dir` | Parse `.git` gitdir pointer |
+
+**Result**: Git info in microseconds, not milliseconds. Three git commands would add ~24ms; we add ~15us.
+
+> **Note**: Yes, this is overengineered. No, a status line doesn't need to be this fast. But optimizing things that don't need optimizing is fun, and mass:time ratio matters.
 
 ### Benchmark (hyperfine, 100 runs)
 
@@ -75,7 +89,7 @@ Configure in `~/.claude/settings.json`:
 ## Example Output
 
 ```
-[Opus 4.5] $1 - [my-project] - 46k/200k (23%) - 27us
+[Opus 4.5] $1 - [my-project:main] - 46k/200k (23%) - 27us
 ~/code/oss/my-project
 ```
 
@@ -83,7 +97,7 @@ Configure in `~/.claude/settings.json`:
 |-------|-------|-------------|
 | `[Opus 4.5]` | Blue | Current model name |
 | `$1` | Green/Yellow/Orange | Session cost (green $0-5, yellow $6-20, orange $21+) |
-| `[my-project]` | Purple | Git repository name (detects worktrees) |
+| `[my-project:main]` | Purple | Git repo and branch (detects worktrees) |
 | `46k/200k (23%)` | Cyan | Context tokens used / total available |
 | `27us` | Gray | Status line render time (microseconds) |
 | `~/code/...` | Gray | Working directory path (~ for home) |

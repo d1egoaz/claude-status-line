@@ -99,6 +99,24 @@ fn dir_basename(cwd: &str) -> String {
         .map_or_else(|| "?".to_string(), String::from)
 }
 
+/// Returns the path to the git directory for this repo.
+/// For worktrees, returns the worktree's gitdir path.
+/// For normal repos, returns .git directory.
+fn find_gitdir(cwd: &str) -> Option<std::path::PathBuf> {
+    let git_path = Path::new(cwd).join(".git");
+
+    if git_path.is_file() {
+        // Worktree: .git is a file with "gitdir: /path/to/main/.git/worktrees/..."
+        let content = std::fs::read_to_string(&git_path).ok()?;
+        let gitdir = content.trim().strip_prefix("gitdir: ")?;
+        Some(std::path::PathBuf::from(gitdir))
+    } else if git_path.is_dir() {
+        Some(git_path)
+    } else {
+        None
+    }
+}
+
 /// Finds the git repository name by checking .git in the cwd.
 /// For worktrees, parses the .git file to find the main repo.
 /// Returns None if not in a git repo.
@@ -132,6 +150,19 @@ fn find_git_repo_name(cwd: &str) -> Option<String> {
         // Not a git repo
         None
     }
+}
+
+/// Gets the current git branch name.
+/// Returns None if detached HEAD or not in a git repo.
+fn find_git_branch(cwd: &str) -> Option<String> {
+    let gitdir = find_gitdir(cwd)?;
+    let head_path = gitdir.join("HEAD");
+    let head = std::fs::read_to_string(head_path).ok()?;
+
+    // Parse "ref: refs/heads/branch-name"
+    head.trim()
+        .strip_prefix("ref: refs/heads/")
+        .map(String::from)
 }
 
 #[cfg(test)]
@@ -235,8 +266,12 @@ fn main() {
     let cost = input.cost.rounded();
     let (pr, pg, pb) = price_color(cost);
 
-    // Line 1: [Model] $cost - [repo-name] - tokens - time
-    let repo_display = find_git_repo_name(&input.cwd).unwrap_or_else(|| dir_basename(&input.cwd));
+    // Line 1: [Model] $cost - [repo:branch] - tokens - time
+    let repo_name = find_git_repo_name(&input.cwd).unwrap_or_else(|| dir_basename(&input.cwd));
+    let repo_display = match find_git_branch(&input.cwd) {
+        Some(branch) => format!("{repo_name}:{branch}"),
+        None => repo_name,
+    };
 
     println!(
         "[{}] {} - [{}] - {} - {}",
