@@ -31,7 +31,20 @@ The bash version spawns 7 `jq` processes per render (121ms). This Rust version p
 
 See `statusline.sh.example` for the original bash implementation.
 
-## Build
+## Install
+
+### Pre-built Binaries
+
+Download from [Releases](https://github.com/d1egoaz/claude-status-line/releases):
+
+| Platform | File |
+|----------|------|
+| Linux x64 | `statusline-x86_64-unknown-linux-gnu.tar.gz` |
+| macOS Intel | `statusline-x86_64-apple-darwin.tar.gz` |
+| macOS ARM | `statusline-aarch64-apple-darwin.tar.gz` |
+| Windows x64 | `statusline-x86_64-pc-windows-msvc.zip` |
+
+### Build from Source
 
 Requires Rust. Install via [rustup](https://rustup.rs/) or your package manager.
 
@@ -86,6 +99,23 @@ just try      # Test with sample JSON
 just lint     # Run clippy (requires clippy)
 just fmt      # Format code
 ```
+
+## Releasing
+
+To create a new release:
+
+```bash
+# 1. Update version in Cargo.toml
+# 2. Commit the version bump
+git add Cargo.toml Cargo.lock
+git commit -m "chore: bump version to vX.Y.Z"
+
+# 3. Create and push tag
+git tag vX.Y.Z -m "Description of release"
+git push origin main --tags
+```
+
+GitHub Actions will automatically build binaries for all platforms and create a release.
 
 ## License
 
